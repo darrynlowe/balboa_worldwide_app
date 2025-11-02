@@ -73,8 +73,9 @@ module BWA
           begin
             @buffer.concat(@io.__send__(method, 64 * 1024))
           rescue EOFError
-            eofs += 1
-            raise if eofs == 5
+            BWA.logger.debug "EOF Error; retrying"
+            #eofs += 1
+            #raise if eofs == 5
 
             @io.wait_readable(5)
             retry
