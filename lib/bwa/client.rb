@@ -74,13 +74,16 @@ module BWA
             @buffer.concat(@io.__send__(method, 64 * 1024))
           rescue EOFError
             BWA.logger.debug "EOF Error; retrying"
-            #eofs += 1
-            #raise if eofs == 5
+            eofs += 1
+            raise if eofs == 5
 
             @io.wait_readable(5)
             retry
           rescue Errno::ECONNRESET
             BWA.logger.debug "ECONNRESET occured; retrying"
+            eofs += 1
+            raise if eofs == 5
+            
             @io.wait_readable(5)
             retry
           end
