@@ -61,35 +61,25 @@ module BWA
 
     def poll
       message = bytes_read = nil
+      eofs = 0
       loop do
         message, bytes_read = Message.parse(@buffer)
         # discard how much we read
         @buffer = @buffer[bytes_read..-1] if bytes_read
+        break if message
+        
         method = @io.respond_to?(:readpartial) ? :readpartial : :read
-        unless message
-          # one EOF is just serial ports saying they have no data;
-          # several EOFs in a row is the file is dead and gone
-          eofs = 0
-          begin
-            @buffer.concat(@io.__send__(method, 64 * 1024))
-          rescue EOFError
-            BWA.logger.debug "EOF Error; retrying"
+        begin
+          data = @io.__send__(method, 64 * 1024)
+          raise EOFError if data.nil?
+          @buffer.concat(data)          
+        rescue EOFError, Errno::ECONNRESET => 0
+            BWA.logger.debug "#{e.class}; retrying"
             eofs += 1
             raise if eofs == 5
-
             @io.wait_readable(5)
             retry
-          rescue Errno::ECONNRESET
-            BWA.logger.debug "ECONNRESET occured; retrying"
-            eofs += 1
-            raise if eofs == 5
-            
-            @io.wait_readable(5)
-            retry
-          end
-          next
         end
-        break
       end
 
       if message.is_a?(Messages::Ready) && (msg = @queue&.shift)
