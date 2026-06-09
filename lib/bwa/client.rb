@@ -73,12 +73,13 @@ module BWA
           data = @io.__send__(method, 64 * 1024)
           raise EOFError if data.nil?
           @buffer.concat(data)          
-        rescue EOFError, Errno::ECONNRESET => 0
-            BWA.logger.debug "#{e.class}; retrying"
-            eofs += 1
-            raise if eofs == 5
-            @io.wait_readable(5)
-            retry
+        rescue EOFError, Errno::ECONNRESET => e
+          BWA.logger.debug "#{e.class}; retrying"
+          eofs += 1
+          raise if eofs == 5
+          
+          @io.wait_readable(5)
+          retry
         end
       end
 
